@@ -57,6 +57,7 @@ print(r.kobe12)
 print(r.kobe13)
 print(r.kobe14)
 ```
+
 ![](/post/2021-05-09-my-blog_files/KobeMVP.jpeg)
 
 So, you tell me. What does Kobe Bryant mean to you?
