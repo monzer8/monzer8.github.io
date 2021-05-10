@@ -1,0 +1,42 @@
+---
+title: My Blog
+author: ''
+date: '2021-05-09'
+slug: my-blog
+categories: []
+tags: []
+description: ''
+---
+## This is my first blog entry
+
+Basketball is my favorite sport. There is nothing I love more than watching a good NBA game. My favorite player is Kobe Bryant. I watched him when I was just starting to get introduced to the sport. Although he has unfortunately passed, I believe his legacy still lives on. He is in all honesty the biggest idol in my life. This is a picture of him. ![](/post/2021-05-09-my-blog_files/Kobe.jpeg)
+
+These are some of my opinions of him:
+```{python} 
+print("Kobe Bryant is the greatest basketball player I have ever seen")
+print("Kobe Bryant is the greatest Laker of all-time")
+print("Kobe Bryant is the greatest clutch player of all-time in NBA history")
+```
+Now, these are some facts about Kobe Bryant:
+```{r}
+library(reticulate)
+kobe <- "5 NBA Championships"
+kobe1 <- "2 NBA Finals MVP Awards"
+kobe2 <- "1 NBA MVP Award"
+kobe3 <- "4th All-time Leading Scorer in NBA History"
+kobe4 <- "Most Game Winners in NBA History"
+kobe5 <- "Played 20 Seasons with the Lakers, Most in Franchise History"
+kobe6 <- "Came to the NBA Straight Out of High School"
+```
+
+```{python}
+print(r.kobe)
+print(r.kobe1)
+print(r.kobe2)
+print(r.kobe3)
+print(r.kobe4)
+print(r.kobe5)
+print(r.kobe6)
+```
+
+So, you tell me. What does Kobe Bryant mean to you?

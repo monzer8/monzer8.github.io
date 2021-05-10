@@ -60,7 +60,7 @@
  
 <div class="blog-title">
           <h4>
-         January 1, 0001 
+         May 9, 2021 
             &nbsp;&nbsp;
             
           </h4>
@@ -194,9 +194,9 @@ rand_dist[i]&lt;-mean(new[new$condition==1,]$WS)-
 {hist(rand_dist,main=&quot;&quot;,ylab=&quot;&quot;); abline(v = c(-1.086, 1.086),col=&quot;red&quot;)}</code></pre>
 <p><img src="../../project/project2_files/figure-html/unnamed-chunk-4-1.png" width="768" style="display: block; margin: auto;" /></p>
 <pre class="r"><code>mean(rand_dist)</code></pre>
-<pre><code>## [1] 0.0009622059</code></pre>
+<pre><code>## [1] 0.001372163</code></pre>
 <pre class="r"><code>mean(rand_dist&gt;1.086 | rand_dist&lt; -1.086)</code></pre>
-<pre><code>## [1] 2e-04</code></pre>
+<pre><code>## [1] 0</code></pre>
 <pre class="r"><code>t.test(data=NBA1,WS~Pos,)</code></pre>
 <pre><code>##
 ## Welch Two Sample t-test
@@ -353,15 +353,15 @@ coef(fit1)
 
 samp_distn %&gt;% t %&gt;% as.data.frame %&gt;% summarize_all(sd)</code></pre>
 <pre><code>##   (Intercept)         PER         WS
-## 1  0.06383071 0.006540038 0.01498384</code></pre>
+## 1  0.06381497 0.006436484 0.01468606</code></pre>
 <pre class="r"><code>samp_distn %&gt;% t %&gt;% as.data.frame %&gt;% pivot_longer(1:3) %&gt;% group_by(name) %&gt;%
 summarize(lower=quantile(value,.025), upper=quantile(value,.975))</code></pre>
 <pre><code>## # A tibble: 3 x 3
 ##   name           lower  upper
 ##   &lt;chr&gt;          &lt;dbl&gt;  &lt;dbl&gt;
-## 1 (Intercept) -0.105   0.144 
-## 2 PER         -0.00179 0.0238
-## 3 WS          -0.0152  0.0428</code></pre>
+## 1 (Intercept) -0.108   0.140 
+## 2 PER         -0.00144 0.0235
+## 3 WS          -0.0139  0.0440</code></pre>
 <p>I then ran the regression model with the interaction of PER and WS but I this time computed the bootstrapped standard errors. I did this by resampling observations which I resampled 5000 times. The standard errors for the bootrapped data were higher for both PER and WS compared to the normal SE but when compared to the robust SE the bootstrapped SE are smaller for both PER and WS. This means the p-value for the bootstrapp is more than the normal SE but smaller than the robust SE.</p>
 <pre class="r"><code>library(plotROC)
 NBA2 &lt;- NBA %&gt;% mutate(Pos=ifelse(Pos == &quot;C&quot;, &quot;C&quot;, &quot;A&quot;))
@@ -542,8 +542,8 @@ for(i in 1:k){
   diags&lt;-rbind(diags,class_diag(probs,truth))
 }
 summarize_all(diags,mean) </code></pre>
-<pre><code>##         acc      sens      spec       ppv       auc
-## 1 0.1591373 0.7336364 0.0272942 0.1444402 0.2189566</code></pre>
+<pre><code>##         acc      sens       spec       ppv       auc
+## 1 0.1532549 0.7088023 0.03145086 0.1396525 0.2137814</code></pre>
 <pre class="r"><code>NBA4 &lt;- NBA3 %&gt;% select(-Player, -y, -prob, -predicted, -logit)
 y&lt;-as.matrix(NBA4$Pos) #grab response
 x&lt;-model.matrix(Pos~.,data=NBA4)[,-1]
@@ -552,11 +552,11 @@ lasso&lt;-glmnet(x,y,family=&quot;binomial&quot;,lambda=cv$lambda.1se)
 coef(lasso)</code></pre>
 <pre><code>## 5 x 1 sparse Matrix of class &quot;dgCMatrix&quot;
 ##                      s0
-## (Intercept) -5.64499655
-## PER          0.25067854
-## WS           0.12958212
-## BPM         -0.29147975
-## VORP        -0.08629399</code></pre>
+## (Intercept) -5.02651620
+## PER          0.21587731
+## WS           0.08594338
+## BPM         -0.24308247
+## VORP         .</code></pre>
 <pre class="r"><code>k=10
 data &lt;- NBA4 %&gt;% sample_frac 
 folds &lt;- ntile(1:nrow(data),n=10) 
@@ -571,8 +571,8 @@ probs &lt;- predict(fit, newdata=test, type=&quot;response&quot;)
 diags&lt;-rbind(diags,class_diag(probs,truth))
 }
 diags%&gt;%summarize_all(mean)</code></pre>
-<pre><code>##         acc      sens      spec       ppv       auc
-## 1 0.8331373 0.9614662 0.2664369 0.8529312 0.7891343</code></pre>
+<pre><code>##         acc     sens      spec       ppv      auc
+## 1 0.8330588 0.956419 0.2916581 0.8560183 0.792579</code></pre>
 <p>I created a fit model this time with all of the variables predicting the binary response variable of Pos. I got a value of 0.817 for the accuracy which means 0.817 of the positions were correctly classified. I got a value of 0.99 for the TNR which means 0.99 of the any other positions were correctly classified. I got a value of 0.021 for the TPR which means 0.021 of the Centers were correctly classified. I got a value of 0.5 for the PPV which means 0.5 of those classified as centers actually are. I also ran an ROC plot and calculated the AUC. I got a value of 0.8 which means on average 80% of Centers will have higher scores than those of any other position. I then performed a 10-fold CV on the same model. Using the 10-fold CV, I got 0.155 for the accuracy which means 0.155 of the positions were correctly classified. I got a value of 0.692 for the sensitivity which means 0.692 of the Centers were correctly classified. I got a valuee of 0.027 for the specificity which means 0.027 of the any other positions were correctly classified. I got a value of 0.14 for the PPV which means 0.14 of those classified as centers actually are. I got a value of 0.207 for the AUC which means on average 20% of Centers will have higher scores than those of any other position. Compared to the in-sample metrics the AUC of the 10-fold CV is much lower and is considered very bad by the rule of thumb. I then performed a LASSO and found that PER, WS, BPM, and VORP are all important predictors of Pos since they were the variables retained. I then performed a 10-fold CV with the variables the LASSO suggested which was all the variables. I got a value of 0.805 for the AUC which is higher than both the in-sample and the original 10-fold CV. And an AUC at 0.805 is considered Good based on the rule of thumb.</p>
 
             

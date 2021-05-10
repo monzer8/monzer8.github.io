@@ -5,11 +5,12 @@
     <link>/project/</link>
     <description>Recent content in Projects on Monzer Alatrach Blog</description>
     <generator>Hugo -- gohugo.io</generator>
-    <language>en-US</language><atom:link href="/project/index.xml" rel="self" type="application/rss+xml" />
+    <language>en-US</language>
+    <lastBuildDate>Sun, 09 May 2021 00:00:00 +0000</lastBuildDate><atom:link href="/project/index.xml" rel="self" type="application/rss+xml" />
     <item>
       <title>Project 1: Exploratory Data Analysis</title>
       <link>/project/project1/</link>
-      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <pubDate>Sun, 09 May 2021 00:00:00 +0000</pubDate>
       
       <guid>/project/project1/</guid>
       <description>The two datasets that I have chosen contain data on all of the NBA players that have played so far this year. Specifically, the datasets contain data about 3 point shooting statistics. In the first dataset, the variables are the player name, the players position, the average number of 3 pointers he makes per game and the average number of 3 pointers he attempts per game.</description>
@@ -18,7 +19,7 @@
     <item>
       <title>Project 2: Modeling, Testing, and Predicting</title>
       <link>/project/project2/</link>
-      <pubDate>Mon, 01 Jan 0001 00:00:00 +0000</pubDate>
+      <pubDate>Sun, 09 May 2021 00:00:00 +0000</pubDate>
       
       <guid>/project/project2/</guid>
       <description>class_diag &amp;lt;- function(probs,truth){ #CONFUSION MATRIX: CALCULATE ACCURACY, TPR, TNR, PPV if(is.character(truth)==TRUE) truth&amp;lt;-as.factor(truth) if(is.numeric(truth)==FALSE &amp;amp; is.logical(truth)==FALSE) truth&amp;lt;-as.numeric(truth)-1 tab&amp;lt;-table(factor(probs&amp;gt;.5,levels=c(&amp;quot;FALSE&amp;quot;,&amp;quot;TRUE&amp;quot;)),factor(truth, levels=c(0,1))) acc=sum(diag(tab))/sum(tab) sens=tab[2,2]/colSums(tab)[2] spec=tab[1,1]/colSums(tab)[1] ppv=tab[2,2]/rowSums(tab)[2] #CALCULATE EXACT AUC ord&amp;lt;-order(probs, decreasing=TRUE) probs &amp;lt;- probs[ord]; truth &amp;lt;- truth[ord] TPR=cumsum(truth)/max(1,sum(truth)) FPR=cumsum(!truth)/max(1,sum(!truth)) dup &amp;lt;-c(probs[-1]&amp;gt;=probs[-length(probs)], FALSE) TPR &amp;lt;-c(0,TPR[!dup],1); FPR&amp;lt;-c(0,FPR[!dup],1) n &amp;lt;- length(TPR) auc &amp;lt;- sum( ((TPR[-1]+TPR[-n])/2) * (FPR[-1]-FPR[-n])) data.frame(acc,sens,spec,ppv,auc) } library(tidyverse) library(cluster) NBA &amp;lt;- read_csv(&amp;quot;NBA Advanced.csv&amp;quot;) NBA &amp;lt;- NBA %&amp;gt;% pivot_wider(1, names_from=`Player,Pos,PER,WS,BPM,VORP` , values_from = `Player,Pos,PER,WS,BPM,VORP`) %&amp;gt;% pivot_longer(contains(&amp;quot;,&amp;quot;)) %&amp;gt;% separate(name, into = c(&amp;quot;Player&amp;quot;, &amp;quot;Pos&amp;quot; , &amp;quot;PER&amp;quot; , &amp;quot;WS&amp;quot;, &amp;quot;BPM&amp;quot; , &amp;quot;VORP&amp;quot;), sep = &amp;quot;,&amp;quot;, convert = T) %&amp;gt;% separate(&amp;quot;Player&amp;quot; , into = c(&amp;quot;Player&amp;quot; , &amp;quot;ID&amp;quot;), sep = &amp;quot;\\\\&amp;quot;) %&amp;gt;% na.</description>
