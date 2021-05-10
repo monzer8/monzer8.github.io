@@ -1,0 +1,281 @@
+---
+title: 'Project 2: Modeling, Testing, and Predicting'
+author: "Monzer Alatrach"
+date: ''
+output:
+  html_document:
+    toc: yes
+    toc_float:
+      collapsed: no
+      smooth_scroll: yes
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+hook_output = knit_hooks$get('output')
+knit_hooks$set(output = function(x, options) {
+  # this hook is used only when the linewidth option is not NULL
+  if (!is.null(n <- options$linewidth)) {
+    x = knitr:::split_lines(x)
+    # any lines wider than n should be wrapped
+    if (any(nchar(x) > n)) x = strwrap(x, width = n)
+    x = paste(x, collapse = '\n')
+  }
+  hook_output(x, options)
+})
+
+knitr::opts_chunk$set(echo = TRUE, eval = TRUE,fig.align="center",warning=FALSE,message=FALSE,fig.width=8, fig.height=5, linewidth=60)
+options(tibble.width = 100,width = 100)
+library(tidyverse)
+```
+
+
+```{r}
+class_diag <- function(probs,truth){ 
+  #CONFUSION MATRIX: CALCULATE ACCURACY, TPR, TNR, PPV 
+  if(is.character(truth)==TRUE) truth<-as.factor(truth) 
+  if(is.numeric(truth)==FALSE & is.logical(truth)==FALSE) truth<-as.numeric(truth)-1 
+  tab<-table(factor(probs>.5,levels=c("FALSE","TRUE")),factor(truth, levels=c(0,1))) 
+  acc=sum(diag(tab))/sum(tab) 
+  sens=tab[2,2]/colSums(tab)[2] 
+  spec=tab[1,1]/colSums(tab)[1] 
+  ppv=tab[2,2]/rowSums(tab)[2] 
+  
+#CALCULATE EXACT AUC 
+  ord<-order(probs, decreasing=TRUE) 
+  probs <- probs[ord]; truth <- truth[ord] 
+  TPR=cumsum(truth)/max(1,sum(truth))  
+  FPR=cumsum(!truth)/max(1,sum(!truth)) 
+  dup <-c(probs[-1]>=probs[-length(probs)], FALSE) 
+  TPR <-c(0,TPR[!dup],1); FPR<-c(0,FPR[!dup],1) 
+  n <- length(TPR) 
+  auc <- sum( ((TPR[-1]+TPR[-n])/2) * (FPR[-1]-FPR[-n])) 
+  data.frame(acc,sens,spec,ppv,auc) 
+}
+
+```
+
+
+```{r}
+library(tidyverse)
+library(cluster)
+
+NBA <- read_csv("NBA Advanced.csv")
+
+NBA <- NBA %>% pivot_wider(1, names_from=`Player,Pos,PER,WS,BPM,VORP` , values_from = `Player,Pos,PER,WS,BPM,VORP`) %>% pivot_longer(contains(",")) %>% separate(name, into = c("Player", "Pos" , "PER" , "WS", "BPM" , "VORP"), sep = ",", convert = T) %>% separate("Player" , into = c("Player" , "ID"), sep = "\\\\") %>% na.omit() %>% select(c("Player", "Pos" , "PER" , "WS", "BPM" , "VORP")) 
+
+
+```
+In this Dataset I am calling it NBA theree are 6 total variables. The dataset is the advanced statistics of all the NBA players that have played in the 2020-2021 regular season. The variables in the set are the Player name, the Position the player plays (C, PF, SF, SG, or PG), the PER which is the players efficiency rating on offense, the WS which is the win shares that are attributed to a player based on their pereformance, the BPM which is the players Box-Plus-Minus or a stat that tracks how many points a player has added throughout the season, and the VORP which is the value over replacement for each player. I tidy'd up the data. There are a total of 509 players in the set. 
+
+
+```{r}
+library(dplyr)
+library(rstatix)
+library(mvtnorm)
+library(ggExtra)
+
+ggplot(NBA, aes(x = PER, y = WS)) +
+geom_point(alpha = .5) + geom_density_2d(h=2) + coord_fixed() + facet_wrap(~Pos)
+
+group <- NBA$Pos
+DVs <- NBA %>% select(PER, WS) 
+sapply(split(DVs,group), mshapiro_test)
+
+man1<-manova(cbind(PER,WS)~Pos, data=NBA)
+summary(man1)
+summary.aov(man1)
+
+NBA%>%group_by(Pos)%>%summarize(mean(PER),mean(WS))
+pairwise.t.test(NBA$PER, NBA$Pos, p.adj = "none")
+pairwise.t.test(NBA$WS, NBA$Pos, p.adj = "none")
+
+0.05/23
+```
+Pos is the independent variable and PER and WS are the dependent variables. I performed 1 MANOVA, 2 ANOVA, and 20 t-tests. The probability of at least one type1 error is 0.00217.  I did post-hoc ANOVA and pair-wise t-tests. The overall MANOVA is significant. The assumptions for a MANOVA are random and independent observations, multivariate dependent varibales, homogeneity, a linear relatioship between DVs, no extreme ouliers, and no multicollinearity. By using the Shapiro-wilkes test normality was not met for all of the Pos as SF was the only non-significant value. I do not belive that my data met all of the assumptions
+
+
+```{r}
+NBA1 <- NBA %>% mutate(Pos=ifelse(Pos=="C",1,0))
+NBA1%>%group_by(Pos)%>%
+  summarize(means=mean(WS))%>%summarize(`mean_diff`=diff(means))
+
+rand_dist<-vector() 
+
+for(i in 1:5000){
+new<-data.frame(WS=sample(NBA1$WS),condition=NBA1$Pos) 
+rand_dist[i]<-mean(new[new$condition==1,]$WS)-   
+              mean(new[new$condition==0,]$WS)} 
+{hist(rand_dist,main="",ylab=""); abline(v = c(-1.086, 1.086),col="red")}
+mean(rand_dist)
+
+mean(rand_dist>1.086 | rand_dist< -1.086)
+
+t.test(data=NBA1,WS~Pos,)
+```
+I performed a randomization test for the mean difference for my data. I used the WS as my dependent variable and Pos as the independent variable. I first made the Pos data easier to understand by making all players that are Centers a 1 and all others a 0. The null hypothesis is that the mean WS is the same for Centers and all other positions. The alternate hypothesis is that mean WS is different for Centers and all other positions. The mean difference for the unscrambled data I got is 1.086. I then ran 5000 times and got a mean difference of 0 which is way lower. The p-value for the permutation test I got was 0 which is less than 0.05 so the null hypothesis is rejected. When running a t-test, the same conclusion is seen as the p-value of 0 is less than 0.05 so the null is rejected. So, there is a difference in the mean WS for centers and all other positions.
+    
+```{r}
+library(sandwich)
+library(lmtest)
+x<- scale(NBA1$PER)
+y <- scale(NBA1$WS)
+fit<-lm(Pos~x, data= NBA1)
+summary(fit)
+
+fit1<-lm(Pos~y, data=NBA1)
+summary(fit1)
+
+fit2<-lm(Pos~y + x, data=NBA1)
+summary(fit2)
+
+ggplot(NBA1, aes(x=WS, y=PER,group=Pos))+geom_point(aes(color=Pos))+
+geom_smooth(method="lm",se=F,fullrange=T,aes(color=Pos))+
+theme(legend.position=c(.9,.19))+xlab("")
+
+resids<-fit2$residuals
+fitvals<-fit2$fitted.values
+ggplot()+geom_point(aes(fitvals,resids))+geom_hline(yintercept=0, color='red')
+
+resids<- lm(y~x, data=NBA1)$residuals
+resids <-fit2$residuals
+ks.test(resids, "pnorm", mean=0, sd(resids)) 
+
+fit3<-lm(Pos~WS+PER,data=NBA1) 
+bptest(fit2)
+
+summary(fit3)$coef
+coeftest(fit2, vcov = vcovHC(fit3))
+
+```
+I first ran a linear regression for Pos and PER. I scaled the PER data first. For the estimate I got a value of 0.081 which means that 0.081 is the average increase in Pos for every 1 increase in PER and I got a value of 0.18 for the intercept which means at 0 PER the Pos is 0.18. I then did a linear regression for WS and Pos and scaled WS first. I got an estimate value of 0.075 which means that the 0.075 is the average increase in Pos for every 1 increase in WS and I got a value of 0.18 for the intercept which means at 0 WS the Pos is 0.18. I then did a mutliple regression for Pos and the interaction between PER and WS. I got an estimate value of 0.039 for PER and 0.056 for WS. This means that with holding PER constant, 0.056 is the average increase in Pos for every 1 incrrease in WS and with holding WS constnat, 0.039 is the average increase in Pos for every 1 increase in PER. The intercept for the interaction is 0.18 which means with PER and WS both at 0 the Pos is 0.18. The proportion of the variance that can be explained by the model is 0.047 or 4.7%. In order to test forr assumptions I used the KS test. I got a p-value of less than 0.05 which means we reject the null which is the distribution is normal so mine is not normal. I then did a bp test to test for homoskedacity and I got a p-value of less than 0.05 which means we reject the null which is homoskedacity. Meaning the data is heteroskedacity. I also did a test for linearity for the data by using a graph and it is clear the data is not linear either since there is no constant variance. I then recomputed the regression results with robust standard errors. The standard errors increased after recomputing. This means that the p-values increased to all above 0.05 so no significance any longer for PER while WS was not-significant before and after the rercomputing.
+
+```{r}
+fit<-lm(Pos ~ PER + WS, data=NBA1)
+summary(fit)
+
+
+boot_dat<- sample_frac(NBA1, replace=T)
+samp_distn<-replicate(5000, {
+boot_dat <- sample_frac(NBA1, replace=T) 
+fit1 <- lm(Pos~PER+WS, data=boot_dat) 
+coef(fit1) 
+})
+
+samp_distn %>% t %>% as.data.frame %>% summarize_all(sd)
+samp_distn %>% t %>% as.data.frame %>% pivot_longer(1:3) %>% group_by(name) %>%
+summarize(lower=quantile(value,.025), upper=quantile(value,.975))
+
+
+
+```
+I then ran the regression model with the interaction of PER and WS but I this time computed the bootstrapped standard errors. I did this by resampling observations which I resampled 5000 times. The standard errors for the bootrapped data were higher for both PER and WS compared to the normal SE but when compared to the robust SE the bootstrapped SE are smaller for both PER and WS. This means the p-value for the bootstrapp is more than the normal SE but smaller than the robust SE.
+    
+```{r}
+library(plotROC)
+NBA2 <- NBA %>% mutate(Pos=ifelse(Pos == "C", "C", "A"))
+NBA2 <- NBA2 %>% mutate(y=ifelse(Pos=="C",1,0))
+NBA2
+fit<-glm(y~PER + WS,data=NBA2,family=binomial(link="logit"))
+coeftest(fit)
+exp(coef(fit))
+
+NBA2$prob <- predict(fit,type="response")
+NBA2$predicted <- ifelse(NBA2$prob>.5,"C","A")
+NBA2
+NBA2$logit<-predict(fit)
+NBA2$Pos<-factor(NBA2$Pos,levels=c("C","A"))
+table(truth=NBA2$Pos, prediction=NBA2$predicted)%>%addmargins
+
+Accuracy <- (2+414)/509 #Accuracy
+TNR <- (414/416) #TNR
+TPR <- (2/93) #TPR
+PPV <- (2/4) #PPV
+Accuracy
+TNR
+TPR
+PPV
+
+ggplot(NBA2,aes(logit, fill=Pos))+geom_density(alpha=.3)+
+  geom_vline(xintercept=0,lty=2)
+
+ROCplot<-ggplot(NBA2)+geom_roc(aes(d=Pos,m=prob), n.cuts=0)
+ROCplot
+calc_auc(ROCplot)
+
+```
+For this I created a binary variable. I first mutated the data so all Pos are either C for center or A for any other position. I then mutated to create a binarry variable y that is 1 for a Pos of C or 0 for a Pos of A. So 1 for a center and 0 for any other position. I then ran a logistic regression model for y with the interaction of PER and WS. Instead of interpreting the log estimates I converted it. 0.054 is the predicted Pos when PER and WS are both 0. While holding WS constant, 1.099 is the average increase in Pos for every one unit increase in PER and while holding PER constant 1.039 is average increase in Pos for every one unit increase ing WS. I then ran a confusion matrix for the logistic regression. For the accurracy I got 0.817 which means 0.817 of the positions were correctly classified. For the TNR I got 0.995 which means 0.995 of the any other positions were correctly classified. For the TPR I got 0.021 which means 0.021 of the Centers were correctly classified. And for the PPV I got 0.5 which means 0.5 of those classified as centers actually are. The TPR and PPV are very low meaning the model did not do a good job of predicting the center position for a player. I then made an ROC plot and calcultaeed the AUC which is the area under the ROC curve. I got a value of 0.74 which is in essence the probability that a randomly selected player who is a center has a higher predicted probability than a randomly selected player who is any other position. Meaning, on average 74% of Centers will have higher scores than those of any other position.
+    
+```{r}
+library(plotROC)
+library(lmtest)
+library(glmnet)
+NBA3 <- NBA %>% mutate(Pos=ifelse(Pos == "C", "C", "A"))
+NBA3 <- NBA3 %>% mutate(y=ifelse(Pos=="C",1,0))
+NBA3
+fit<-glm(y~PER + WS + BPM + VORP,data=NBA3,family=binomial(link="logit"))
+coeftest(fit)
+exp(coef(fit))
+
+NBA3$prob <- predict(fit,type="response")
+NBA3$predicted <- ifelse(NBA2$prob>.5,"C","A")
+NBA3
+NBA3$logit<-predict(fit)
+NBA3$Pos<-factor(NBA3$Pos,levels=c("C","A"))
+table(truth=NBA3$Pos, prediction=NBA3$predicted)%>%addmargins
+
+Accuracy <- (2+414)/509 #Accuracy
+TNR <- (414/416) #TNR
+TPR <- (2/93) #TPR
+PPV <- (2/4) #PPV
+Accuracy
+TNR
+TPR
+PPV
+
+ggplot(NBA3,aes(logit, fill=Pos))+geom_density(alpha=.3)+
+  geom_vline(xintercept=0,lty=2)
+
+ROCplot<-ggplot(NBA3)+geom_roc(aes(d=Pos,m=prob), n.cuts=0)
+ROCplot
+calc_auc(ROCplot)
+
+k=10 
+data<-NBA3[sample(nrow(NBA3)),] 
+folds<-cut(seq(1:nrow(NBA3)),breaks=k,labels=F) 
+diags<-NULL
+for(i in 1:k){
+  train<-data[folds!=i,] 
+  test<-data[folds==i,]
+  truth<-test$y
+  fit<-glm(Pos~PER + WS + BPM + VORP,data=train,family="binomial")
+  probs<-predict(fit,newdata = test,type="response")
+  
+  diags<-rbind(diags,class_diag(probs,truth))
+}
+summarize_all(diags,mean) 
+
+NBA4 <- NBA3 %>% select(-Player, -y, -prob, -predicted, -logit)
+y<-as.matrix(NBA4$Pos) #grab response
+x<-model.matrix(Pos~.,data=NBA4)[,-1]
+cv<-cv.glmnet(x,y,family="binomial")
+lasso<-glmnet(x,y,family="binomial",lambda=cv$lambda.1se)
+coef(lasso)
+
+k=10
+data <- NBA4 %>% sample_frac 
+folds <- ntile(1:nrow(data),n=10) 
+diags<-NULL
+for(i in 1:k){
+train <- data[folds!=i,] #create training set (all but fold i)
+test <- data[folds==i,] #create test set (just fold i)
+truth <- test$Pos #save truth labels from fold i
+fit <- glm(Pos~PER+WS+BPM,
+data=train, family="binomial")
+probs <- predict(fit, newdata=test, type="response")
+diags<-rbind(diags,class_diag(probs,truth))
+}
+diags%>%summarize_all(mean)
+
+```
+I created a fit model this time with all of the variables predicting the binary response variable of Pos. I got a value of 0.817 for the accuracy which means 0.817 of the positions were correctly classified. I got a value of 0.99 for the TNR which means 0.99 of the any other positions were correctly classified. I got a value of 0.021 for the TPR which means 0.021 of the Centers were correctly classified. I got a value of 0.5 for the PPV which means 0.5 of those classified as centers actually are. I also ran an ROC plot and calculated the AUC. I got a value of 0.8 which means on average 80% of Centers will have higher scores than those of any other position. I then performed a 10-fold CV on the same model. Using the 10-fold CV, I got 0.155 for the accuracy which means 0.155 of the positions were correctly classified. I got a value of 0.692 for the sensitivity which means 0.692 of the Centers were correctly classified. I got a valuee of 0.027 for the specificity which means 0.027 of the any other positions were correctly classified. I got a value of 0.14 for the PPV which means 0.14 of those classified as centers actually are. I got a value of 0.207 for the AUC which means on average 20% of Centers will have higher scores than those of any other position. Compared to the in-sample metrics the AUC of the 10-fold CV is much lower and is considered very bad by the rule of thumb. I then performed a LASSO and found that PER, WS, BPM, and VORP are all important predictors of Pos since they were the variables retained. I then performed a 10-fold CV with the variables the LASSO suggested which was all the variables. I got a value of 0.805 for the AUC which is higher than both the in-sample and the original 10-fold CV. And an AUC at 0.805 is considered Good based on the rule of thumb.

@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en-US">
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="author" content="Monzer Alatrach" />
+    
+    <link rel="shortcut icon" type="image/x-icon" href="../../img/favicon.ico">
+    <title>Project 1: Exploratory Data Analysis</title>
+    <meta name="generator" content="Hugo 0.83.1" />
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/css/bootstrap.min.css" integrity="sha384-BVYiiSIFeK1dGmJRAkycuHAHRg32OmUcww7on3RYdg4Va+PmSTsz/K68vbdEjh4u" crossorigin="anonymous">
+    <link rel="stylesheet" type="text/css" href="../../css/main.css" />
+    <link rel="stylesheet" type="text/css" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.7.0/css/font-awesome.min.css" />
+    <link rel="stylesheet" type="text/css" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:200,400,200bold,400old" />
+    
+    <!--[if lt IE 9]>
+			<script src="https://oss.maxcdn.com/libs/html5shiv/3.7.0/html5shiv.js"></script>
+			<script src="https://oss.maxcdn.com/libs/respond.js/1.4.2/respond.min.js"></script>
+		<![endif]-->
+
+    
+  </head>
+
+  <body>
+    <div id="wrap">
+      
+      <nav class="navbar navbar-default">
+  <div class="container">
+    <div class="navbar-header">
+      <a class="navbar-brand" href="../../"><i class="fa fa-home"></i></a>
+      <button type="button" class="navbar-toggle" data-toggle="collapse" data-target="#navbar">
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+        <span class="icon-bar"></span>
+      </button>
+    </div>
+    <div class="navbar-collapse collapse" id="navbar">
+      <ul class="nav navbar-nav navbar-right">
+      
+        
+        <li><a href="../../post/">BLOG</a></li>
+        
+        <li><a href="../../projects/">PROJECTS</a></li>
+        
+        <li><a href="../../resume/">RESUME</a></li>
+        
+      
+      </ul>
+    </div>
+  </div>
+</nav>
+
+      <div class="container">
+        <div class="blog-post">
+          <h3>
+            <strong><a href="../../project/project1/">Project 1: Exploratory Data Analysis</a></strong>
+          </h3>
+        </div>
+ 
+<div class="blog-title">
+          <h4>
+         January 1, 0001 
+            &nbsp;&nbsp;
+            
+          </h4>
+        </div>
+
+        <div class="panel panel-default">
+          <div class="panel-body">
+            <div class="blogpost">
+              
+<script src="../../rmarkdown-libs/htmlwidgets/htmlwidgets.js"></script>
+<script src="../../rmarkdown-libs/plotly-binding/plotly.js"></script>
+<script src="../../rmarkdown-libs/typedarray/typedarray.min.js"></script>
+<script src="../../rmarkdown-libs/jquery/jquery.min.js"></script>
+<link href="../../rmarkdown-libs/crosstalk/css/crosstalk.css" rel="stylesheet" />
+<script src="../../rmarkdown-libs/crosstalk/js/crosstalk.min.js"></script>
+<link href="../../rmarkdown-libs/plotly-htmlwidgets-css/plotly-htmlwidgets.css" rel="stylesheet" />
+<script src="../../rmarkdown-libs/plotly-main/plotly-latest.min.js"></script>
+
+
+<P style="page-break-before: always">
+<div style="page-break-after: always;"></div>
+<p>The two datasets that I have chosen contain data on all of the NBA players that have played so far this year. Specifically, the datasets contain data about 3 point shooting statistics. In the first dataset, the variables are the player name, the players position, the average number of 3 pointers he makes per game and the average number of 3 pointers he attempts per game. The second dataset contains variables for the players names, the average distance a players shot attempts are taken at, and the percentage of the players total shots that are 3 pointers (3 point attempt rate). These were all aquired from basketballreference.com ’s 2020-2021 season player per game statistics and shooting statistics. These are interesting to me because I am an avid NBA fan and I also love the statistical aspect of the game. Since Stephen Curry arrived on the scene, the number of 3 point attempts has dramatically risen across the board in the NBA and I am interested in looking at the data from this current season. I expect to see some potential associations with a few of the variables. First, the center position has become the lost art of the NBA. However, I still expect centers to be taking the least amount of three pointers as any other position because they are often the tallest players and it makes more sense for them to shoot closer to the basket. I also expect to see players that make the most three pointers per game be within any of the guard positions. This is because guards in the NBA now are the main three point shooters and it is honestly a necessity now for guards to shoot lots of threes and shoot them well.</p>
+<pre class="r"><code>library(tidyverse)
+library(cluster)
+
+NBA1 &lt;- read_csv(&quot;NBA 3PT Shooting File.csv&quot;)
+glimpse(NBA1)</code></pre>
+<pre><code>## Rows: 506
+## Columns: 1
+## $ `Player,Pos,3P,3PA` &lt;chr&gt; &quot;Precious Achiuwa\\achiupr01,PF,0.0,0.0&quot;, &quot;Jaylen…</code></pre>
+<pre class="r"><code>NBA2 &lt;- read_csv(&quot;NBA 3PT Shooting File 2.csv&quot;)
+glimpse(NBA2)</code></pre>
+<pre><code>## Rows: 506
+## Columns: 1
+## $ `Player,Pos,Dist.,3P` &lt;chr&gt; &quot;Precious Achiuwa\\achiupr01,PF,3.5,.000&quot;, &quot;Jay…</code></pre>
+<pre class="r"><code>NBA1 &lt;- NBA1 %&gt;% pivot_wider(1, names_from = `Player,Pos,3P,3PA`, 
+    values_from = `Player,Pos,3P,3PA`) %&gt;% pivot_longer(contains(&quot;,&quot;)) %&gt;% 
+    separate(name, into = c(&quot;Name&quot;, &quot;Pos&quot;, &quot;3P&quot;, &quot;3PA&quot;), sep = &quot;,&quot;, 
+        convert = T) %&gt;% separate(&quot;Name&quot;, into = c(&quot;Name&quot;, &quot;ID&quot;), 
+    sep = &quot;\\\\&quot;) %&gt;% select(c(&quot;Name&quot;, &quot;Pos&quot;, &quot;3P&quot;, &quot;3PA&quot;))
+
+head(NBA1)</code></pre>
+<pre><code>## # A tibble: 6 x 4
+##   Name              Pos    `3P` `3PA`
+##   &lt;chr&gt;             &lt;chr&gt; &lt;dbl&gt; &lt;dbl&gt;
+## 1 Precious Achiuwa  PF      0     0  
+## 2 Jaylen Adams      PG      0     0.3
+## 3 Steven Adams      C       0     0.1
+## 4 Bam Adebayo       C       0.1   0.2
+## 5 LaMarcus Aldridge C       1.3   3.6
+## 6 Ty-Shon Alexander SG      0     0.5</code></pre>
+<pre class="r"><code>NBA2 &lt;- NBA2 %&gt;% pivot_wider(1, names_from = `Player,Pos,Dist.,3P`, 
+    values_from = `Player,Pos,Dist.,3P`) %&gt;% pivot_longer(contains(&quot;,&quot;)) %&gt;% 
+    separate(name, into = c(&quot;Name&quot;, &quot;Pos&quot;, &quot;Dist&quot;, &quot;3PAr&quot;), sep = &quot;,&quot;, 
+        convert = T) %&gt;% separate(&quot;Name&quot;, into = c(&quot;Name&quot;, &quot;ID&quot;), 
+    sep = &quot;\\\\&quot;) %&gt;% select(c(&quot;Name&quot;, &quot;Dist&quot;, &quot;3PAr&quot;))
+
+head(NBA2)</code></pre>
+<pre><code>## # A tibble: 6 x 3
+##   Name               Dist `3PAr`
+##   &lt;chr&gt;             &lt;dbl&gt;  &lt;dbl&gt;
+## 1 Precious Achiuwa    3.5  0    
+## 2 Jaylen Adams       11    0.25 
+## 3 Steven Adams        3.9  0.013
+## 4 Bam Adebayo         8    0.014
+## 5 LaMarcus Aldridge  16.6  0.302
+## 6 Ty-Shon Alexander  21.5  0.5</code></pre>
+<p>The data I pulled was from basketballreference.com and it was not tidy at all. The entire data sheets were both just 1 column and over 500 rows with the column header including all of the variable names meshed into one text. Thankfully, the variables were separated by a comma so id made it easy to separate. For the first data sheet I pulled data from all NBA players this 2020-2021 season in regards to their name, position they play, 3 pointer made per game, and their 3 pointers attemped per game. I had it downloaded as a CSV and read the data set in and named it NBA1. In order to demonstrate my ability to utilize the tidyr functions, I utilized the pivot_wider function first to make a variable for each player that holds 1 row including their name, ID, position, 3P, and 3PA. I then used pivot_longer for columns that contain a comma to essentially revert the dataset back to its orignal place. Then, I separated the column by the comma and created 4 columns, however the name column included both the players name and their ID separated by a  so I further separated the Name column into 2 columns for name and ID. Finally, I selected the Name, Pos, 3P,and 3PA columns only and recoded them to NBA1, thereby leaving out the ID column. I did the same process for the second dataset. I downloaded the CSV and pulled it into RStudio and named it NBA2. The second dataset included the same players and the variables for the names/ID, position, 3 point attempt rate, and their average shot distance. First, I utilized the pivot_wider function first to make a variable for each player that holds 1 row including their name, ID, position, 3P, and 3PA. I then used pivot_longer for columns that contain a comma to essentially revert the dataset back to its orignal place. Then, I had to tidy the dataset up by creating 4 columns for each of the variables by separating by a comma. Then, I further separated the Name column into name and ID by separating by a . Finally, I selected the 3 columns for Name, Dist, and 3PAr and recoded it to NBA2. Thereby leaving out the player ID column and position for NBA2. I left out the position for NBA2 because the position data was already in NBA1. The player ID column is a unique column that basketballreference utilizes for easier player identification but for this project I did not need it. It is easier for me to identify the players soley by their name as the ID alone does not provide enough information to be able to tell which player it is.</p>
+<pre class="r"><code>NBA3 &lt;- NBA1 %&gt;% left_join(NBA2, by = &quot;Name&quot;) %&gt;% na.omit()
+head(NBA3)</code></pre>
+<pre><code>## # A tibble: 6 x 6
+##   Name              Pos    `3P` `3PA`  Dist `3PAr`
+##   &lt;chr&gt;             &lt;chr&gt; &lt;dbl&gt; &lt;dbl&gt; &lt;dbl&gt;  &lt;dbl&gt;
+## 1 Precious Achiuwa  PF      0     0     3.5  0    
+## 2 Jaylen Adams      PG      0     0.3  11    0.25 
+## 3 Steven Adams      C       0     0.1   3.9  0.013
+## 4 Bam Adebayo       C       0.1   0.2   8    0.014
+## 5 LaMarcus Aldridge C       1.3   3.6  16.6  0.302
+## 6 Ty-Shon Alexander SG      0     0.5  21.5  0.5</code></pre>
+<pre class="r"><code>glimpse(NBA3)</code></pre>
+<pre><code>## Rows: 496
+## Columns: 6
+## $ Name   &lt;chr&gt; &quot;Precious Achiuwa&quot;, &quot;Jaylen Adams&quot;, &quot;Steven Adams&quot;, &quot;Bam Adeba…
+## $ Pos    &lt;chr&gt; &quot;PF&quot;, &quot;PG&quot;, &quot;C&quot;, &quot;C&quot;, &quot;C&quot;, &quot;SG&quot;, &quot;SG&quot;, &quot;SG&quot;, &quot;C&quot;, &quot;PF&quot;, &quot;PF&quot;, …
+## $ `3P`   &lt;dbl&gt; 0.0, 0.0, 0.0, 0.1, 1.3, 0.0, 1.5, 2.1, 0.1, 0.4, 1.4, 1.1, 0.…
+## $ `3PA`  &lt;dbl&gt; 0.0, 0.3, 0.1, 0.2, 3.6, 0.5, 4.4, 5.2, 0.3, 1.8, 3.7, 3.8, 0.…
+## $ Dist   &lt;dbl&gt; 3.5, 11.0, 3.9, 8.0, 16.6, 21.5, 15.9, 19.3, 4.3, 12.8, 14.5, …
+## $ `3PAr` &lt;dbl&gt; 0.000, 0.250, 0.013, 0.014, 0.302, 0.500, 0.508, 0.658, 0.036,…</code></pre>
+<p>In order to add my datasets together, I used the left_join dplyr funtion. The reason why I used this is because both data sets had the same players involved. This included 506 NBA players from this current season. So, both datasets had the same player names. All that was different was the 3 point shooting data that was associated with each dataset and NBA1 had the positions that each player played. So, since the names were the same for each player in both dataset I went ahead and did a left join. I joined the two datasets by the players name since that was what was the same between the two sets. A left join essentially keeps everything on the “left” (x) alone and adds in data that matches from the other dataset (y). This way, I kept all the information for NBA1 dataset but just added in the Dist and 3PAr variables and data to it from NBA2. I renamed the joined datasets NBA3. I then went ahead and omit all rows that have an “NA” value associated with them. Since the NBA is a global sport, there are players in the leage from around the world which is great. However, for some reason RStudio has a difficult time being able to read in certain symbols. For instance, lots of players have tilde’s and accents associated with the spelling of their name but when I pulled the CSV files into R it was unable to read them properly and gave them an NA value. So, I went ahead and just go rid of all players that have the accents which came out to be 10 total players omitted from the joined dataset.</p>
+<pre class="r"><code>NBA4 &lt;- NBA3 %&gt;% mutate(Three_Percentage = `3P`/`3PA`)
+
+NBA4 %&gt;% filter(Pos == &quot;C&quot;) %&gt;% select(c(Name, Three_Percentage)) %&gt;% 
+    arrange(desc(Three_Percentage))</code></pre>
+<pre><code>## # A tibble: 91 x 2
+##    Name           Three_Percentage
+##    &lt;chr&gt;                     &lt;dbl&gt;
+##  1 Bam Adebayo               0.5  
+##  2 Isaiah Stewart            0.5  
+##  3 Bobby Portis              0.458
+##  4 Gorgui Dieng              0.455
+##  5 Meyers Leonard            0.435
+##  6 Thomas Bryant             0.429
+##  7 Nikola Joki_              0.417
+##  8 Joel Embiid               0.414
+##  9 Chris Boucher             0.405
+## 10 Frank Kaminsky            0.4  
+## # … with 81 more rows</code></pre>
+<pre class="r"><code>NBA4 %&gt;% filter(Pos == &quot;C&quot;) %&gt;% select(c(Name, `3PAr`)) %&gt;% arrange(desc(`3PAr`))</code></pre>
+<pre><code>## # A tibble: 91 x 2
+##    Name             `3PAr`
+##    &lt;chr&gt;             &lt;dbl&gt;
+##  1 Meyers Leonard    1    
+##  2 Will Magnay       1    
+##  3 An_ejs Pase__iks  1    
+##  4 Mike Muscala      0.689
+##  5 Kelly Olynyk      0.648
+##  6 Marc Gasol        0.637
+##  7 Killian Tillie    0.6  
+##  8 DeMarcus Cousins  0.552
+##  9 Brook Lopez       0.495
+## 10 Justin Patton     0.486
+## # … with 81 more rows</code></pre>
+<pre class="r"><code>NBA4 %&gt;% filter(Pos == &quot;PG&quot;) %&gt;% select(c(Name, Dist)) %&gt;% arrange(Dist)</code></pre>
+<pre><code>## # A tibble: 89 x 2
+##    Name             Dist
+##    &lt;chr&gt;           &lt;dbl&gt;
+##  1 Ben Simmons       4.3
+##  2 Jared Harper      6  
+##  3 Tre Jones         6.3
+##  4 Saben Lee         6.4
+##  5 Bruce Brown       6.7
+##  6 T.J. McConnell    7.6
+##  7 Frank Mason III   8.1
+##  8 Elfrid Payton     8.6
+##  9 Devon Dotson      9.3
+## 10 Jalen Lecque     10  
+## # … with 79 more rows</code></pre>
+<pre class="r"><code>NBA4 %&gt;% select(Name, `3P`, Three_Percentage, Pos) %&gt;% arrange(desc(`3P`))</code></pre>
+<pre><code>## # A tibble: 496 x 4
+##    Name              `3P` Three_Percentage Pos  
+##    &lt;chr&gt;            &lt;dbl&gt;            &lt;dbl&gt; &lt;chr&gt;
+##  1 Stephen Curry      4.7            0.412 PG   
+##  2 Damian Lillard     4.2            0.378 PG   
+##  3 CJ McCollum        4.2            0.404 SG   
+##  4 Buddy Hield        4              0.385 SG   
+##  5 Malik Beasley      3.5            0.398 SG   
+##  6 Zach LaVine        3.5            0.438 SG   
+##  7 Donovan Mitchell   3.4            0.395 SG   
+##  8 Fred VanVleet      3.4            0.374 SG   
+##  9 Joe Harris         3.3            0.493 SF   
+## 10 Duncan Robinson    3.3            0.388 SF   
+## # … with 486 more rows</code></pre>
+<pre class="r"><code>NBA4 %&gt;% filter(Pos == &quot;SG&quot;) %&gt;% select(c(Name, `3PA`)) %&gt;% arrange(desc(`3PA`))</code></pre>
+<pre><code>## # A tibble: 120 x 2
+##    Name             `3PA`
+##    &lt;chr&gt;            &lt;dbl&gt;
+##  1 Buddy Hield       10.4
+##  2 CJ McCollum       10.4
+##  3 Fred VanVleet      9.1
+##  4 Malik Beasley      8.8
+##  5 Jordan Clarkson    8.6
+##  6 Donovan Mitchell   8.6
+##  7 Zach LaVine        8  
+##  8 Terry Rozier       8  
+##  9 Eric Gordon        7.8
+## 10 Tim Hardaway Jr.   7.7
+## # … with 110 more rows</code></pre>
+<pre class="r"><code>NBA4 %&gt;% summarize(mean_3PA = mean(`3PA`), mean_3P = mean(`3P`), 
+    max_Dist = max(Dist), min_Dist = min(Dist), median_Dist = median(Dist), 
+    mean_3PAr = mean(`3PAr`), median_3PAr = median(`3PAr`), sd_3PAr = sd(`3PAr`))</code></pre>
+<pre><code>## # A tibble: 1 x 8
+##   mean_3PA mean_3P max_Dist min_Dist median_Dist mean_3PAr median_3PAr sd_3PAr
+##      &lt;dbl&gt;   &lt;dbl&gt;    &lt;dbl&gt;    &lt;dbl&gt;       &lt;dbl&gt;     &lt;dbl&gt;       &lt;dbl&gt;   &lt;dbl&gt;
+## 1     2.81    1.01     27.3        1        14.6     0.405       0.422   0.231</code></pre>
+<pre class="r"><code>NBA4 %&gt;% group_by(Pos) %&gt;% summarize(mean_Dist = mean(Dist), 
+    n())</code></pre>
+<pre><code>## # A tibble: 10 x 3
+##    Pos   mean_Dist `n()`
+##    &lt;chr&gt;     &lt;dbl&gt; &lt;int&gt;
+##  1 C          8.75    91
+##  2 F         18.7      4
+##  3 G          8        1
+##  4 G-F       10.2      1
+##  5 PF        13.7    103
+##  6 PG        14.9     89
+##  7 PG-SG     14.6      1
+##  8 SF        15.2     85
+##  9 SF-PF     18.8      1
+## 10 SG        16.5    120</code></pre>
+<p>First thing, I made a new variable called Three_Percentage which the the players 3 point percentage. I utilized mutate to take the variables 3P (Average 3P makes per game) and 3PA (Average 3P attempts per game) and divided 3P/3PA to get the player’s 3 Point Percentage. I then filtered by the center position and arranged the data descending so the center with the highest 3 point percentage is shown at the top. The results indicate that Bam Adebayo has the highest 3P% among all centers. Then, I decided to filter by the center position again and look at the 3PAr for each center in a descending manner. At the top of the list is Meyers Leonard, who is out of the NBA for innappropriate comments he made a few weeks ago. However, the data shows that this year 100% of Meyers Leonards shots taken were 3 pointers which is surprising for a center. I continued and filtered by the point guard position and arranged the players by the average distance of their shots. I found that of all the point guards, All-Star guard Ben Simmons had the smallest distance. This makes sense since Ben Simmons is a 6’10" point guard who has on many occasions displayed that he is not comfortable shooting beyond the arc. He is constantly in the news for his inability to shoot three pointers or even long distance jump shots and this data further shows that the average distance of his shots is near the basket. Then, I wanted to take a look at the best 3 point shooters so I arranged all players by the amount of 3 pointers they make per game and of course who else other than Stephen Curry atop of the list. He is a 3 point God and to further show his greatness, in the top 5 for 3P makes per game he has the highest 3 point percentage. Then, I decided to look at shooting guards who are responsible now for being some of the main shooters on their teams so I took a look at the shooting guards who attempt the most threes per game. This was no surprise either as at the top of the list is 3 point specialist Buddy Heild at over 10 three point attempts per game.
+Then, I decided to take a look at the entire players average 3 point attempts per game, average 3 point makes per game, the maximum and minimum distance, the median distance, the average 3 point attempt rate, the median 3 point attempt rate, and the standard deviation for 3 point attempt rate. What stood out to me the most was the average 3 point attempt rate which was over 40% which goes to show how far the pendullum has swuwng in the NBA in regards to 3 point shooting. Where 3 point shooting used to be scarce and even ridiculed by coaches, it is now a stape of the game. Finally, I grouped all of the players by their positions took the mean distance for their shots. Nothing surprising here again, but what I took a major note of was that centers still had the lowest distance (other than the G position but there was only one player that fit that mold so I wont include it in this description). It makes sense since centers are still the tallest players on the floor at all times and it makes sense for them to be closer to the basket to take their shots.</p>
+<pre class="r"><code>cormat &lt;- NBA4 %&gt;% select_if(is.numeric) %&gt;% cor(use = &quot;pair&quot;)
+cormat %&gt;% as.data.frame() %&gt;% rownames_to_column(&quot;var1&quot;)</code></pre>
+<pre><code>##               var1        3P       3PA      Dist      3PAr Three_Percentage
+## 1               3P 1.0000000 0.9805263 0.4927129 0.4316078        0.4889598
+## 2              3PA 0.9805263 1.0000000 0.5044393 0.4437166        0.4001436
+## 3             Dist 0.4927129 0.5044393 1.0000000 0.9417366        0.3072566
+## 4             3PAr 0.4316078 0.4437166 0.9417366 1.0000000        0.2797205
+## 5 Three_Percentage 0.4889598 0.4001436 0.3072566 0.2797205        1.0000000</code></pre>
+<pre class="r"><code>tidycor &lt;- cormat %&gt;% as.data.frame() %&gt;% rownames_to_column(&quot;var1&quot;) %&gt;% 
+    pivot_longer(-1, names_to = &quot;var2&quot;, values_to = &quot;correlation&quot;)
+tidycor %&gt;% ggplot(aes(x = var1, y = var2, fill = correlation)) + 
+    geom_tile() + scale_fill_gradient2(low = &quot;red&quot;, mid = &quot;white&quot;, 
+    high = &quot;blue&quot;) + geom_text(aes(label = round(correlation, 
+    2)), color = &quot;black&quot;, size = 4) + theme(axis.text.x = element_text(angle = 90, 
+    hjust = 1)) + coord_fixed() + labs(title = &quot;Correlation Map for NBA 3Point&quot;)</code></pre>
+<p><img src="../../project/project1_files/figure-html/unnamed-chunk-4-1.png" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>NBA4 %&gt;% ggplot(aes(x = `3P`, y = Dist, color = Three_Percentage)) + 
+    geom_point(stat = &quot;identity&quot;) + ylim(0, 30) + xlim(0, 5) + 
+    labs(title = &quot;Average Shot Distance vs 3 Point Makes&quot;) + 
+    ylab(&quot;Distance&quot;) + xlab(&quot;3 Point Makes Per Game&quot;) + theme_light() + 
+    scale_fill_gradient(low = &quot;blue&quot;, high = &quot;red&quot;)</code></pre>
+<p><img src="../../project/project1_files/figure-html/unnamed-chunk-4-2.png" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>NBA4 %&gt;% group_by(Pos) %&gt;% summarize(mean_3PAr = mean(`3PAr`), 
+    sd_3PAr = sd(`3PAr`), n = n(), se_3PAr = sd_3PAr/sqrt(n)) %&gt;% 
+    ggplot(aes(Pos, mean_3PAr)) + geom_bar(stat = &quot;summary&quot;, 
+    aes(fill = Pos)) + geom_errorbar(aes(y = mean_3PAr, ymin = mean_3PAr - 
+    se_3PAr, ymax = mean_3PAr + se_3PAr)) + ylim(0, 1) + xlab(&quot;Position&quot;) + 
+    ylab(&quot;Mean 3PAr&quot;) + theme(legend.position = &quot;none&quot;) + scale_fill_grey() + 
+    labs(title = &quot;Mean 3PAr by Position&quot;)</code></pre>
+<p><img src="../../project/project1_files/figure-html/unnamed-chunk-4-3.png" width="672" style="display: block; margin: auto;" />
+When looking at the first plot, the correlation map for NBA 3Point, it is clear there are twwo major trends. The major trends are that 3 point attempt rate and average shot distance have a very strong positive correlation and 3 point attempt rate has strong positive relationship with 3 point attempts per game. That makes sense since the more three poitners you take per game the higher the 3 point attempt rate would be. This means that as the 3 point attempt rate increases, so does the average shot distance. The correlation is 0.94 which is poitive and very strong since it is close to 1. Overall there are no other major trends as all the other variable combinations are positive but weak correlations. This is interesting since I thought 3 point shooting statistics other than average distance and 3 point attempt rate would have more of a correlation. However, it makes sense that average shot distance and 3 point attempt rate have a strong positive correlation. As you shoot more of your shots as 3 pointers, your 3 point attempt rate increases. Further, 3 pointers are the farthest shots in the NBA so the more three pointers you take it should mean that the average shot distance also increases.</p>
+<p>When looking at the second plot, the Average shot distance vs the 3 point makes it is clear that there is a slight trend. It seems that for most players who do not shoot three pointers and therfor do not make lots of three pointers, it is for a reason and that is because they do not shoot it well. In the graph, most of the data points near 0 3 pointer makes per game, the colors are black and gray which are indiciative of low shooting percentage. Further, it is expected that those who shoot more three pointers are shooting them because they shoot a high percentage and therfor make more 3 pointers per game. This can be seen as the majority of points at the right of the graph are blue to light blue indicating that they make lots of three pointers and shoot at a high percentage. Also, it is interesting to see that there is a poitive but weak relationship between average distance and 3 point makes per game. I would have expected a stronger relationship but that does not seem to be the case and can also be shown with the first graph with the correlation being 0.49.</p>
+<p>When looking at the third plot, the mean 3 point attempt rate by position there is some interesting findings. What is very interesting is that for the majority of positions there is a very small standard error for mean 3 point attempt rate except for the forward position. This is interesting but could be due to a smaller sample size for the forward position. Further, based on this graph the SF-PF position have the highest mean 3 point attempt rate. I would have expected the guard (PG, SG, G, PG-SG) positions to have the highest but they do not. Another very intersting trend is how small the mean 3 point attempt rate is for the center position. This makes sense since centers are the tallest and therfor it makes the most sense for a center to be shooting closer to the basket since it is a higher percentage shot for them. Overall, it is clear that for most positions other than center (and G-F but that is a very small sample size) they have pretty high 3 point attempt rates which shows the NBA’s trend towards 3 point shooting being favored.</p>
+<pre class="r"><code>pam_dat &lt;- NBA4 %&gt;% select(-Pos, -Name)
+sil_width &lt;- vector()
+for (i in 2:10) {
+    pam_fit &lt;- pam(pam_dat, k = i)
+    sil_width[i] &lt;- pam_fit$silinfo$avg.width
+}
+ggplot() + geom_line(aes(x = 1:10, y = sil_width)) + scale_x_continuous(name = &quot;k&quot;, 
+    breaks = 1:10)</code></pre>
+<p><img src="../../project/project1_files/figure-html/unnamed-chunk-5-1.png" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>pam2 &lt;- NBA4 %&gt;% select(-Pos, -Name) %&gt;% pam(2)
+pam2</code></pre>
+<pre><code>## Medoids:
+##       ID  3P 3PA Dist  3PAr Three_Percentage
+## [1,]  88 0.2 0.7  7.5 0.090        0.2857143
+## [2,] 114 1.3 3.6 16.6 0.588        0.3611111
+## Clustering vector:
+##   [1] 1 1 1 1 2 2 2 2 1 2 2 1 1 1 2 2 2 2 2 2 2 1 1 2 1 2 2 2 2 2 1 2 2 2 1 2 2
+##  [38] 2 2 1 1 2 2 2 1 1 1 1 2 2 1 2 2 2 1 2 2 2 2 1 2 1 2 2 2 2 2 2 1 2 1 2 2 2
+##  [75] 1 2 2 2 1 1 1 2 2 2 1 2 2 1 1 2 1 2 1 2 1 2 1 2 1 2
+##  [ reached getOption(&quot;max.print&quot;) -- omitted 396 entries ]
+## Objective function:
+##    build     swap 
+## 3.602268 3.338492 
+## 
+## Available components:
+##  [1] &quot;medoids&quot;    &quot;id.med&quot;     &quot;clustering&quot; &quot;objective&quot;  &quot;isolation&quot; 
+##  [6] &quot;clusinfo&quot;   &quot;silinfo&quot;    &quot;diss&quot;       &quot;call&quot;       &quot;data&quot;</code></pre>
+<pre class="r"><code>plot(pam2, which = 2)</code></pre>
+<p><img src="../../project/project1_files/figure-html/unnamed-chunk-5-2.png" width="672" style="display: block; margin: auto;" /></p>
+<pre class="r"><code>library(plotly)
+
+final &lt;- NBA4 %&gt;% select(-Pos, -Name) %&gt;% mutate(cluster = pam2$clustering)
+final %&gt;% plot_ly(x = ~`3PAr`, y = ~`3P`, z = ~`3PA`, color = ~cluster, 
+    type = &quot;scatter3d&quot;, mode = &quot;markers&quot;)</code></pre>
+<div id="htmlwidget-1" style="width:672px;height:480px;" class="plotly html-widget"></div>
+<script type="application/json" data-for="htmlwidget-1">{"x":{"visdat":{"8da961d8b50a":["function () ","plotlyVisDat"]},"cur_data":"8da961d8b50a","attrs":{"8da961d8b50a":{"x":{},"y":{},"z":{},"mode":"markers","color":{},"alpha_stroke":1,"sizes":[10,100],"spans":[1,20],"type":"scatter3d"}},"layout":{"margin":{"b":40,"l":60,"t":25,"r":10},"scene":{"xaxis":{"title":"`3PAr`"},"yaxis":{"title":"`3P`"},"zaxis":{"title":"`3PA`"}},"hovermode":"closest","showlegend":false,"legend":{"yanchor":"top","y":0.5}},"source":"A","config":{"showSendToCloud":false},"data":[{"x":[0,0.25,0.013,0.014,0.302,0.5,0.508,0.658,0.036,0.356,0.383,0.207,0,0.221,0.387,0.309,0.516,0.603,0.556,0.646,0.548,0.036,0,0.323,0.231,0.411,0.642,0.376,0.525,0.376,0.234,0.42,0.469,0.677,0.336,0.498,0.462,0.287,0.526,0.133,0.237,0.882,0.657,0.688,0.111,0.102,0.333,0.006,0.387,0.485,0.364,0.634,0.542,0.5,0,0.593,0.593,0.308,0.407,0,0.576,0.013,0.643,0,0.463,0.446,0.371,0.375,0.151,0.348,0,0.652,0.505,0.347,0.231,0.657,0.496,0.472,0.131,0.294,0,0.552,0.691,0.545,0,0.25,0.674,0.09,0.215,0.464,0.063,0.508,0.357,0.824,0.157,0.579,0.047,0.609,0.26,0.523,0.678,0.382,0,0.552,0.713,0.458,0.751,0.277,0.473,0.565,1,0.151,0,0.588,0.114,0.214,0.136,0.444,0.438,0.541,0.381,0.534,0.521,0,0.449,0.412,0.41,0.021,0.714,0.315,0.419,0.506,0.618,0.643,0.8,0.161,0.443,0.011,0.423,0,0.006,0.714,0.071,0.429,0.645,0.585,0.642,0.25,0.509,0.298,0.25,0.154,0.25,0,0.561,0.588,0.304,0.637,0.429,0.445,0.21,0.141,0.301,0.667,0.008,0.491,0.384,0.572,0.69,0.367,0.779,0.338,0.534,0.315,0.474,0.271,0.542,0.574,0.256,0.507,0.478,0.294,0.578,0.459,0.857,0,0.02,0.481,0.5,0.662,0.24,0.1,0.56,0,0,0.426,0.316,0.413,0.73,0.475,0.757,0.353,0.426,0.361,0.732,0.02,0.427,0.422,0.272,0.561,0.07,0.707,0.548,0.706,0.39,0.167,0.311,0.759,1,0.714,0.347,0.341,0.442,0.535,0.369,0.522,0.468,0.4,0.352,0.491,0.623,0.767,0.067,0.682,0.414,0.254,0.66,0.691,0.194,0.03,0.449,0.561,0.033,0.332,0.005,0.364,0.563,0.368,0.003,0.544,0.763,0.326,0.615,0.352,0.612,0.813,0.708,0.498,0.576,0.476,0.417,0.425,0.111,0.735,0.093,0.151,0.276,1,0.353,0.351,0.54,0.542,0.094,0.495,0.061,0.545,0.535,0.444,1,0.111,0.253,0.556,0.045,0.543,0.333,0.434,0.306,0.429,0.227,0.208,0.801,0.542,0.782,0.222,0.458,0,0.528,0.091,0.522,0.373,0.445,0.643,0.093,0.343,0.467,0.329,0.736,0.489,0.667,0.136,0.337,0.871,0.677,0.394,0.286,0.427,0.533,0.514,0.284,0.223,0.647,0.525,0.587,0.373,0.862,0.208,0.397,0.689,0.746,0.371,0.403,0.741,0.377,0.71,0.561,0.014,0.446,0.578,0.478,0.138,0.289,0.41,0.724,0.718,0.071,0.523,0.42,0.022,0.393,0.561,0.417,0.648,0.868,0.572,0.045,0.395,0.143,0.176,1,0.656,0.486,0.299,0.453,0.158,0,0.267,0.875,0.024,0,0.083,0.537,0.56,0.5,0.425,0.475,0.478,0.276,0.388,0.174,0.475,0.486,0.546,0.513,0.6,0.625,0.269,0.479,0.654,0.167,0.289,0,0,0.473,0.57,0.571,0.857,0.444,0.444,0,0.249,0.409,0.214,0.455,0.527,0.383,0.454,0.179,0.521,0.152,0.395,0.802,0.241,0.751,0.75,0.261,0.077,0.021,0.708,1,0.571,0.544,0.398,0.172,0.429,0.689,0.25,0.333,0.171,0.083,0.803,0.39,0.291,0.355,0.298,0.519,0.438,0.33,0.526,0.662,0.013,0.429,0.613,0.6,0.214,0.378,0.417,0.167,0.338,0.578,0.667,1,0.475,0.084,0.586,0.025,0.546,0.509,0.636,0.667,0.316,0.657,0.349,0.516,0.459,0.339,0.353,0.137,0.37,0.522,0.484,0.8,0.25,0.219,0.475,0.538,0.006,0.667,0.353,0.513,0.285,0.277,0.283,0.005,0.033,0.563,0.592,0.281,0.667,0.108,0.291,0.308,0.303,0.063,0.382,0.11,0.012],"y":[0,0,0,0.1,1.3,0,1.5,2.1,0.1,0.4,1.4,1.1,0,0.2,1.8,1.1,2.3,0.6,1,1.3,1,0.1,0,1,0.9,2,3,0.5,1.7,1.5,1.2,1.7,0.3,1.8,0.5,0.9,1.5,2.2,3.5,0,0.3,2.8,1.7,2.3,0,0.1,0.2,0,0.7,1.7,0,2,2.4,0.5,0,0.7,0.4,2,1.5,0,1.6,0,0.3,0,1.8,1.2,2.7,1.8,0.2,2.6,0,1.7,0.7,1.2,0.9,2.1,1.1,2,0.4,0,0,1.5,1,0.2,0,0,0.6,0.2,0.4,0.9,0,0.7,0.5,0.9,0.5,3.1,0.1,0.6,1.3,2.7,1.5,0.5,0,1.6,2,0.6,2.4,0.3,2,4.7,0.5,0.7,0,1.3,0.5,0,0.4,1,0.7,2,2.9,2,0.9,0,0.4,0.9,1.6,0,0.2,2.6,2.2,0.7,0.4,1,2.8,1.2,1.1,0,0.3,0,0,0,0,1.5,1.6,0.3,2.1,0,2.8,1.8,0,0.5,0,0,2.1,1,1.8,0.9,1.6,3.2,0.2,0.1,2,0.1,0,0.6,1.7,2.6,3.1,2.3,2.6,0.5,1.5,0.3,1.3,0.1,1.8,0.6,0.9,2.3,0.1,0.2,3,2.9,0.4,0,0,1.3,0.3,3.3,1.5,0,1.3,0,0,0.7,2,1.8,4,1.6,1,0.1,1,1.8,2.6,0,0.7,2,0.5,1.7,0.1,0.2,2.1,0.4,1.6,0.1,1,1,0,2.7,2.4,2.9,0.1,1,1.1,1,1.5,0.2,2.4,0.6,2.2,1,0,2,0.5,0.9,0.7,1.2,1.5,0,0.9,0.9,0.1,0.7,0,0.7,0.2,0.8,0,1.6,1.9,0.3,1,0.4,1.7,0.6,0.2,2,0.4,1.6,3.5,0.6,0,1.4,0.2,0.2,2,1,2,0.7,4.2,0.8,0.1,1.5,0.1,1,2.8,0.6,0,0,0.4,1.1,0,2.7,0,0.6,0.3,0.1,0.4,0.5,1.5,1,1.1,0.5,0.5,0,4.2,0.2,1,0.4,1.7,0.5,0.2,0.7,0.3,0.6,1.7,1.6,0.7,0.1,2.3,0.8,2.7,1.1,1,3.4,0.1,2.2,0.3,0.8,0.2,2.4,1.1,1.1,1.1,0.9,2.7,1.9,1.6,0.8,1.2,0.8,0.9,1.3,0.6,0,1.4,1,2,0.4,0.6,0.9,1.7,1.2,0,1.1,0.4,0,0.8,0.4,2.6,1.8,0.5,1.8,0,1.6,0,0.4,0,0.9,0.7,1.4,1,0.5,0,0.3,0,0,0,0,0.9,1.7,0.5,1.5,2.4,1.5,1.1,2.3,0.1,2.8,1.3,1.3,2,0.2,1.1,2,1.3,1.6,0,0.8,0,0,1.6,1.3,0.2,3.3,0.7,0.6,0,0.5,0.6,0.9,2.3,3.3,0.8,3,0.8,0.5,0.1,1,1,1.7,1.8,0,1.3,0.1,0.1,2,0.1,0.3,2,0.9,0.3,0.1,1.5,0,0.1,0.1,0.2,1.5,0.6,0.7,2.8,0.8,1.3,0,0.8,0.5,0.6,0,0.2,0.7,0.4,0.3,0.4,0.7,0,2.3,2.8,0.8,0.5,1.5,0.3,1.4,0,3.4,0.9,1,0,2.6,0.9,0.5,2.9,1.7,2,0.3,0,1.4,0.5,0.5,0.8,0,1.2,2.3,2,0,0,2,0.8,0.7,1.1,0.8,0,0.2,0.8,0.8,0.3,0.5,0.3,1.7,0.1,0.8,0.2,2.4,0.1,0],"z":[0,0.3,0.1,0.2,3.6,0.5,4.4,5.2,0.3,1.8,3.7,3.8,0,0.5,4.6,3.3,5.6,1.7,4,3.5,3,0.4,0,3.1,2.6,5.3,7.8,1.7,3.8,4.1,3.5,4.6,0.9,4.3,2,2.4,5.2,6.5,8.8,0.7,0.9,7.3,4.1,5.8,0.1,0.4,1.1,0,2.2,4.8,0.4,5.8,6.3,0.9,0,2.3,1.2,5.8,3.7,0,3.8,0.1,0.6,0,4.4,3.3,6.5,5.7,1,6.7,0,4.2,2.1,3.1,2.1,5.2,2.8,5,1.9,0.8,0,3.7,2.8,0.7,0,0.1,1.9,0.7,1.9,2.2,0.2,2,2.5,3.1,1.5,8.6,0.3,1.3,3.4,6.5,3.7,1.1,0,4.6,5.4,1.4,6.4,1.7,4.7,11.4,2,2.5,0,3.6,1.6,0.8,1.2,2.2,2.3,5.1,8,6,3.3,0,1.8,2.6,4.6,0.3,0.5,5.9,6.8,2.2,1.5,4.5,6.4,2.9,2.4,0,1.8,0,0,0.4,0.1,4.5,4.6,1.8,4.7,0.2,7.2,5.6,0.7,2,0.2,0,5.1,2.1,4.4,2.4,4.2,7.5,0.7,0.4,4.9,0.6,0.1,2,4.5,7.8,8,6.5,6.4,1.9,3.7,0.9,3.3,0.6,5.6,1.7,2.7,5.2,1.4,0.8,7.7,8.1,1,0,0.2,3.9,0.5,6.7,3.8,0.1,4,0,0,2.9,4.8,5.7,10.4,4.1,3,0.7,2.9,4.6,6.6,0.2,2.3,5.4,1.9,4.6,0.3,1.3,5.7,1.3,4.4,0.4,2.8,3,0.7,5.5,6.2,7.1,1,2.4,4.1,3.2,3.5,0.7,6.5,1.8,5.1,2.9,1,5.4,2.1,2.7,1.8,3.1,3.6,0,2.7,2.5,0.1,2.3,0,2.1,0.8,2,0,3.3,4.2,0.8,2.5,1.1,4.6,1.9,1.1,5.5,2.4,3.7,8,2,0.3,3.6,0.4,0.6,5,2.3,5.7,2,11.1,2,0.3,4.4,0.3,3,7,1.7,1,0.3,1.1,2.8,0.2,7.1,0.3,2,1,0.6,1.2,1.3,3.5,3.3,3.2,1.5,1.3,0,10.4,0.6,2.8,1.3,4.5,1.8,0.6,1.5,0.8,1.8,5.2,3.7,1.5,0.4,5.2,1.9,6.9,2.8,3.2,8.6,0.9,5.2,1.2,3.5,0.6,5.2,3.2,3.2,2.6,3,6.5,5.3,4.8,1.8,3.3,2.5,2.6,3.3,1.5,0.1,3.8,2.2,5.4,1.1,2.1,1.8,4.1,3.1,0.3,2.7,1.8,0,2.8,1.5,7.7,5.7,1.5,5.7,0.1,5.2,0.3,1.3,1,2.3,2.6,3.8,2.4,1.8,0,1.1,0.5,0.2,0,0.1,3.9,4.5,1,6,5.6,3.8,2.4,6.3,0.5,6.3,3.5,3.3,5.2,0.6,2.9,4.7,4.8,4.5,0.6,2.4,0,0,5,3.7,1.6,8.5,1.9,2.3,0,1.6,1.7,2.5,6.3,8,2.7,7.4,2.6,1.6,0.3,3.1,3,4.5,4.9,1.5,4.2,0.1,0.2,4.8,0.6,1,5.7,2.7,1.1,0.6,2.5,0.5,0.4,0.6,0.4,4.1,1.5,2.3,7.3,1.6,3.8,0.6,2.3,1.8,1.6,0.1,0.6,2.1,1.8,1.1,1.3,1.5,0.3,5.8,7.3,2.6,0.5,4.4,1,4.3,0.1,9.1,2.3,3.5,0.5,6.5,2.4,1.7,8,4.8,6.1,1.5,1.8,3.6,1.3,1.3,1.8,0.2,4.1,6.4,6,0,0.5,5.1,2,1.5,2.8,2.2,0,0.5,2.2,2.5,2.6,1,1,4.5,0.5,2.4,0.6,6.8,0.8,0.1],"mode":"markers","type":"scatter3d","marker":{"colorbar":{"title":"cluster","ticklen":2},"cmin":1,"cmax":2,"colorscale":[["0","rgba(68,1,84,1)"],["0.0416666666666667","rgba(70,19,97,1)"],["0.0833333333333333","rgba(72,32,111,1)"],["0.125","rgba(71,45,122,1)"],["0.166666666666667","rgba(68,58,128,1)"],["0.208333333333333","rgba(64,70,135,1)"],["0.25","rgba(60,82,138,1)"],["0.291666666666667","rgba(56,93,140,1)"],["0.333333333333333","rgba(49,104,142,1)"],["0.375","rgba(46,114,142,1)"],["0.416666666666667","rgba(42,123,142,1)"],["0.458333333333333","rgba(38,133,141,1)"],["0.5","rgba(37,144,140,1)"],["0.541666666666667","rgba(33,154,138,1)"],["0.583333333333333","rgba(39,164,133,1)"],["0.625","rgba(47,174,127,1)"],["0.666666666666667","rgba(53,183,121,1)"],["0.708333333333333","rgba(79,191,110,1)"],["0.75","rgba(98,199,98,1)"],["0.791666666666667","rgba(119,207,85,1)"],["0.833333333333333","rgba(147,214,70,1)"],["0.875","rgba(172,220,52,1)"],["0.916666666666667","rgba(199,225,42,1)"],["0.958333333333333","rgba(226,228,40,1)"],["1","rgba(253,231,37,1)"]],"showscale":false,"color":[1,1,1,1,2,2,2,2,1,2,2,1,1,1,2,2,2,2,2,2,2,1,1,2,1,2,2,2,2,2,1,2,2,2,1,2,2,2,2,1,1,2,2,2,1,1,1,1,2,2,1,2,2,2,1,2,2,2,2,1,2,1,2,2,2,2,2,2,1,2,1,2,2,2,1,2,2,2,1,1,1,2,2,2,1,2,2,1,1,2,1,2,1,2,1,2,1,2,1,2,2,2,1,2,2,2,2,1,2,2,2,1,1,2,1,1,1,2,2,2,2,2,2,1,2,2,2,1,2,2,2,2,2,2,2,1,2,1,2,1,1,2,1,2,2,2,2,1,2,2,2,1,1,1,2,2,2,2,2,2,1,1,2,2,1,2,2,2,2,2,2,2,2,1,2,1,2,2,2,2,2,1,2,2,2,1,1,2,2,2,2,1,2,1,1,2,2,2,2,2,2,2,2,2,2,1,2,2,1,2,1,2,2,2,2,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,2,2,1,2,2,1,1,2,2,1,2,1,2,2,2,1,2,2,1,2,1,2,2,2,2,2,2,2,2,1,2,1,1,2,2,2,2,2,2,1,2,1,2,2,2,2,1,1,2,1,2,2,2,1,2,1,1,2,2,2,2,2,1,2,1,2,1,2,2,1,1,2,1,2,2,2,1,2,2,2,2,2,2,2,2,2,1,2,2,2,2,2,2,2,2,2,1,2,2,2,2,2,1,2,2,2,1,1,2,2,2,1,2,2,1,1,2,2,2,2,2,1,2,2,1,2,2,2,2,2,1,1,1,2,1,1,1,2,2,2,2,2,2,2,2,1,2,2,2,2,2,2,2,2,2,1,1,1,1,2,2,2,2,2,2,1,1,2,2,2,2,2,2,1,2,1,2,2,2,2,2,2,1,1,2,2,2,2,2,1,1,2,1,1,1,1,2,1,1,2,2,2,2,2,2,2,1,2,2,2,1,1,1,1,2,2,2,2,2,1,2,1,2,2,2,2,2,2,1,2,2,2,2,1,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,1,1,2,2,2,2,1,2,2,1,1,2,1,1],"line":{"colorbar":{"title":"","ticklen":2},"cmin":1,"cmax":2,"colorscale":[["0","rgba(68,1,84,1)"],["0.0416666666666667","rgba(70,19,97,1)"],["0.0833333333333333","rgba(72,32,111,1)"],["0.125","rgba(71,45,122,1)"],["0.166666666666667","rgba(68,58,128,1)"],["0.208333333333333","rgba(64,70,135,1)"],["0.25","rgba(60,82,138,1)"],["0.291666666666667","rgba(56,93,140,1)"],["0.333333333333333","rgba(49,104,142,1)"],["0.375","rgba(46,114,142,1)"],["0.416666666666667","rgba(42,123,142,1)"],["0.458333333333333","rgba(38,133,141,1)"],["0.5","rgba(37,144,140,1)"],["0.541666666666667","rgba(33,154,138,1)"],["0.583333333333333","rgba(39,164,133,1)"],["0.625","rgba(47,174,127,1)"],["0.666666666666667","rgba(53,183,121,1)"],["0.708333333333333","rgba(79,191,110,1)"],["0.75","rgba(98,199,98,1)"],["0.791666666666667","rgba(119,207,85,1)"],["0.833333333333333","rgba(147,214,70,1)"],["0.875","rgba(172,220,52,1)"],["0.916666666666667","rgba(199,225,42,1)"],["0.958333333333333","rgba(226,228,40,1)"],["1","rgba(253,231,37,1)"]],"showscale":false,"color":[1,1,1,1,2,2,2,2,1,2,2,1,1,1,2,2,2,2,2,2,2,1,1,2,1,2,2,2,2,2,1,2,2,2,1,2,2,2,2,1,1,2,2,2,1,1,1,1,2,2,1,2,2,2,1,2,2,2,2,1,2,1,2,2,2,2,2,2,1,2,1,2,2,2,1,2,2,2,1,1,1,2,2,2,1,2,2,1,1,2,1,2,1,2,1,2,1,2,1,2,2,2,1,2,2,2,2,1,2,2,2,1,1,2,1,1,1,2,2,2,2,2,2,1,2,2,2,1,2,2,2,2,2,2,2,1,2,1,2,1,1,2,1,2,2,2,2,1,2,2,2,1,1,1,2,2,2,2,2,2,1,1,2,2,1,2,2,2,2,2,2,2,2,1,2,1,2,2,2,2,2,1,2,2,2,1,1,2,2,2,2,1,2,1,1,2,2,2,2,2,2,2,2,2,2,1,2,2,1,2,1,2,2,2,2,1,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,1,2,2,1,2,2,1,1,2,2,1,2,1,2,2,2,1,2,2,1,2,1,2,2,2,2,2,2,2,2,1,2,1,1,2,2,2,2,2,2,1,2,1,2,2,2,2,1,1,2,1,2,2,2,1,2,1,1,2,2,2,2,2,1,2,1,2,1,2,2,1,1,2,1,2,2,2,1,2,2,2,2,2,2,2,2,2,1,2,2,2,2,2,2,2,2,2,1,2,2,2,2,2,1,2,2,2,1,1,2,2,2,1,2,2,1,1,2,2,2,2,2,1,2,2,1,2,2,2,2,2,1,1,1,2,1,1,1,2,2,2,2,2,2,2,2,1,2,2,2,2,2,2,2,2,2,1,1,1,1,2,2,2,2,2,2,1,1,2,2,2,2,2,2,1,2,1,2,2,2,2,2,2,1,1,2,2,2,2,2,1,1,2,1,1,1,1,2,1,1,2,2,2,2,2,2,2,1,2,2,2,1,1,1,1,2,2,2,2,2,1,2,1,2,2,2,2,2,2,1,2,2,2,2,1,2,2,2,2,1,2,2,2,1,2,2,2,1,2,2,1,1,2,2,2,2,1,2,2,1,1,2,1,1]}},"frame":null},{"x":[0,1],"y":[0,4.7],"type":"scatter3d","mode":"markers","opacity":0,"hoverinfo":"none","showlegend":false,"marker":{"colorbar":{"title":"cluster","ticklen":2,"len":0.5,"lenmode":"fraction","y":1,"yanchor":"top"},"cmin":1,"cmax":2,"colorscale":[["0","rgba(68,1,84,1)"],["0.0416666666666667","rgba(70,19,97,1)"],["0.0833333333333333","rgba(72,32,111,1)"],["0.125","rgba(71,45,122,1)"],["0.166666666666667","rgba(68,58,128,1)"],["0.208333333333333","rgba(64,70,135,1)"],["0.25","rgba(60,82,138,1)"],["0.291666666666667","rgba(56,93,140,1)"],["0.333333333333333","rgba(49,104,142,1)"],["0.375","rgba(46,114,142,1)"],["0.416666666666667","rgba(42,123,142,1)"],["0.458333333333333","rgba(38,133,141,1)"],["0.5","rgba(37,144,140,1)"],["0.541666666666667","rgba(33,154,138,1)"],["0.583333333333333","rgba(39,164,133,1)"],["0.625","rgba(47,174,127,1)"],["0.666666666666667","rgba(53,183,121,1)"],["0.708333333333333","rgba(79,191,110,1)"],["0.75","rgba(98,199,98,1)"],["0.791666666666667","rgba(119,207,85,1)"],["0.833333333333333","rgba(147,214,70,1)"],["0.875","rgba(172,220,52,1)"],["0.916666666666667","rgba(199,225,42,1)"],["0.958333333333333","rgba(226,228,40,1)"],["1","rgba(253,231,37,1)"]],"showscale":true,"color":[1,2],"line":{"color":"rgba(255,127,14,1)"}},"z":[0,11.4],"frame":null}],"highlight":{"on":"plotly_click","persistent":false,"dynamic":false,"selectize":false,"opacityDim":0.2,"selected":{"opacity":1},"debounce":0},"shinyEvents":["plotly_hover","plotly_click","plotly_selected","plotly_relayout","plotly_brushed","plotly_brushing","plotly_clickannotation","plotly_doubleclick","plotly_deselect","plotly_afterplot","plotly_sunburstclick"],"base_url":"https://plot.ly"},"evals":[],"jsHooks":[]}</script>
+<pre class="r"><code>library(GGally)
+# ggpairs(final, columns=1:5, aes(color=cluster))
+
+NBA4_nums &lt;- NBA4 %&gt;% select_if(is.numeric) %&gt;% scale
+NBA4_nums[is.na(NBA4_nums)] &lt;- 0
+rownames(NBA4_nums) &lt;- NBA4$Name
+NBA4_pca &lt;- princomp(NBA4_nums)
+summary(NBA4_pca, loadings = T)</code></pre>
+<pre><code>## Importance of components:
+##                          Comp.1    Comp.2    Comp.3     Comp.4      Comp.5
+## Standard deviation     1.759175 1.0418036 0.8218980 0.23575537 0.119400262
+## Proportion of Variance 0.628313 0.2203586 0.1371494 0.01128448 0.002894468
+## Cumulative Proportion  0.628313 0.8486716 0.9858211 0.99710553 1.000000000
+## 
+## Loadings:
+##                  Comp.1 Comp.2 Comp.3 Comp.4 Comp.5
+## 3P                0.496  0.409  0.267         0.718
+## 3PA               0.491  0.367  0.380        -0.691
+## Dist              0.472 -0.505        -0.721       
+## 3PAr              0.451 -0.557         0.692       
+## Three_Percentage  0.293  0.364 -0.880</code></pre>
+<pre class="r"><code>eigval &lt;- NBA4_pca$sdev^2
+varprop = round(eigval/sum(eigval), 2)
+ggplot() + geom_bar(aes(y = varprop, x = 1:5), stat = &quot;identity&quot;) + 
+    xlab(&quot;&quot;) + geom_path(aes(y = varprop, x = 1:5))</code></pre>
+<p><img src="../../project/project1_files/figure-html/unnamed-chunk-5-4.png" width="672" style="display: block; margin: auto;" /></p>
+<p>For this project, I decided to look at the five numeric variables that were part of my dataset. This includes 3PAr, 3PA, 3P, Dist, and Three_Percentage. For this set, I decided to look at how many clusters would be necessary for this dataset. In the plot, I found that there was no single cluster number that would have had an averade silhoutte width above 0.7. Instead, at 2 clusters the average silhouette width was 0.55 which indicates that a reasonable strucutre has been found. So, I used PAM clustering for the 2 clusters. I then plotted a 3-D graph to see the clusters with 3PAr as the x-axis, 3P as the y and 3PA as the z axis. In the graph, the clusters are shown with the first cluster in the corner with all the low 3PA, 3P, and 3PAr players which had a strong silhoutte width but the second cluster was a little bit larger and therfor a smaller silhoutte width.</p>
+<p>Then, I made a plot to see the number of PCs to use. It seems based on the plot to use 4 PCs since it tails off at 5.</p>
+<pre class="r"><code>## paste this chunk into the ```{r setup} chunk at the top of
+## your project 1 .Rmd file
+
+knitr::opts_chunk$set(echo = TRUE, eval = TRUE, fig.align = &quot;center&quot;, 
+    warning = F, message = F, tidy = TRUE, tidy.opts = list(width.cutoff = 60), 
+    R.options = list(max.print = 100))</code></pre>
+
+            
+        <hr>         <div class="related-posts">
+                <h5>Related Posts</h5>
+                
+              </div> 
+            </div>
+          </div>
+
+   <hr>  <div class="disqus">
+  <div id="disqus_thread"></div>
+  <script type="text/javascript">
+
+    (function() {
+      
+      
+      if (window.location.hostname == "localhost")
+        return;
+
+      var disqus_shortname = '';
+      var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+      dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+      (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+    })();
+  </script>
+  <noscript>Please enable JavaScript to view the <a href="http://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+  <a href="http://disqus.com/" class="dsq-brlink">comments powered by <span class="logo-disqus">Disqus</span></a>
+</div> 
+        </div>
+      </div>
+    </div>
+
+    
+    <footer>
+  <div id="footer">
+    <div class="container">
+      <p class="text-muted">&copy; All rights reserved. Powered by <a href="https://gohugo.io/">Hugo</a> and
+      <a href="http://www.github.com/nurlansu/hugo-sustain/">sustain</a> with ♥</p>
+    </div>
+  </div>
+</footer>
+<div class="footer"></div>
+
+
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/1.11.3/jquery.min.js"></script>
+
+<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
+<script src="../../js/docs.min.js"></script>
+<script src="../../js/main.js"></script>
+
+<script src="../../js/ie10-viewport-bug-workaround.js"></script>
+
+
+    
+  </body>
+</html>
